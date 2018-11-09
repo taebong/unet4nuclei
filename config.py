@@ -70,6 +70,7 @@ config_vars["elastic_augmentations"] = 10
 config_vars["learning_rate"] = 1e-4
 
 config_vars["epochs"] = 15
+#config_vars["epochs"]=2
 
 config_vars["steps_per_epoch"] = 500
 

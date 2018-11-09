@@ -27,8 +27,8 @@ import utils.model_builder
 # # Configuration
 PI = 3.1415926539
 HALF_SIDE = 96 # pixels
-SAVE_OUTPUT = "locations"
-IMG_EXT = ".tif"
+SAVE_OUTPUT = "both"
+IMG_EXT = ".TIF"
 
 from config import config_vars
 
@@ -124,7 +124,15 @@ while i < total_num_images:
     images = images.reshape((-1, dim1, dim2, 1))
 
     # Normalize pixels
-    images = images / np.max(np.max(np.max(images, axis=-1), axis=-1), axis=-1)
+    #images = images / np.max(np.max(np.max(images, axis=-1), axis=-1), axis=-1)
+    for j,img in enumerate(images):
+        high = np.max(img)
+        low = np.min(img)
+
+        img = (img - low) / (high - low) # gives float64, thus cast to 8 bit later
+        img = skimage.img_as_ubyte(img)
+        
+        images[j] = img
 
     # Normal prediction time
     predictions = model.predict(images, batch_size=len(batch))
@@ -155,7 +163,7 @@ while i < total_num_images:
     
         label = label.astype(np.int16)
         if SAVE_OUTPUT == "masks" or SAVE_OUTPUT == "both":
-            skimage.io.imsave(filename, label)
+            skimage.io.imsave(filename.replace(".csv",".png"), label)
 
         # Save object properties
         if SAVE_OUTPUT == "locations" or SAVE_OUTPUT == "both":

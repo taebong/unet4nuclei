@@ -39,7 +39,7 @@ from config import config_vars
 # Partition of the data to make predictions (test or validation)
 partition = "validation"
 
-experiment_name = '01'
+experiment_name = '02_modified_model'
 
 config_vars = utils.dirtools.setup_experiment(config_vars, experiment_name)
 

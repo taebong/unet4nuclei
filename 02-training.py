@@ -4,6 +4,13 @@
 # # Step 02
 # # Training a U-Net model
 
+# In[1]:
+
+
+#get_ipython().run_line_magic('matplotlib', 'inline')
+
+
+# In[5]:
 
 
 import sys
@@ -27,7 +34,7 @@ import utils.objectives
 import utils.dirtools
 
 # Uncomment the following line if you don't have a GPU
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+#os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 
 # # Configuration
@@ -41,13 +48,13 @@ from config import config_vars
 # In[7]:
 
 
-experiment_name = '01'
+experiment_name = '02_modified_model'
 
 config_vars = utils.dirtools.setup_experiment(config_vars, experiment_name)
 
 data_partitions = utils.dirtools.read_data_partitions(config_vars)
 
-#config_vars
+config_vars
 
 
 # # Initiate data generators
@@ -55,7 +62,7 @@ data_partitions = utils.dirtools.read_data_partitions(config_vars)
 # In[8]:
 
 
-# build session running on GPU 0
+# build session running on GPU 1
 configuration = tf.ConfigProto()
 configuration.gpu_options.allow_growth = True
 configuration.gpu_options.visible_device_list = "0"
