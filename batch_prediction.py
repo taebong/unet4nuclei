@@ -1,9 +1,4 @@
 
-# coding: utf-8
-
-# # Step 03
-# # Predict segmentations
-
 import sys
 import os
 import os.path
@@ -32,14 +27,19 @@ IMG_EXT = ".TIF"
 
 from config import config_vars
 
-if len(sys.argv) < 5:
-    print("Use: python batch_prediction.py experiment_name image_list.csv input_dir output_dir")
+if len(sys.argv) != 4:
+    print("Use: python batch_prediction.py experiment_name image_list.csv output_dir")
     sys.exit()
 else:
     experiment_name = sys.argv[1]
     image_list = pd.read_csv(sys.argv[2])
-    input_dir = sys.argv[3]
-    output_dir = sys.argv[4]
+    output_dir = sys.argv[3]
+
+
+image_list["DNA"] = [s.replace(IMG_EXT,".png") for s in image_list["DNA"]]
+input_dir = output_dir+"normalized_images/"
+if not os.path.isdir(input_dir):
+    print("normalized images not found. Preprocess by batch_preprocess.py first") 
 
 # Partition of the data to make predictions (test or validation)
 
@@ -122,33 +122,25 @@ while i < total_num_images:
     imagebuffer = skimage.io.imread_collection(image_names)
     images = imagebuffer.concatenate()
     images = images.reshape((-1, dim1, dim2, 1))
-
-    # Normalize pixels
-    #images = images / np.max(np.max(np.max(images, axis=-1), axis=-1), axis=-1)
-    for j,img in enumerate(images):
-        high = np.max(img)
-        low = np.min(img)
-
-        img = (img - low) / (high - low) # gives float64, thus cast to 8 bit later
-        img = skimage.img_as_ubyte(img)
-        
-        images[j] = img
-
+    
+    images = images/255  #assume int8    
+    
     # Normal prediction time
     predictions = model.predict(images, batch_size=len(batch))
 
     # # Transform predictions to label matrices
 
     for j in range(len(batch)):
+        os.makedirs(output_dir+"locations", exist_ok=True)
+        
         # Determine whether the image has been processed before
-        filename = output_dir + batch[j].replace(IMG_EXT,".csv")
+        filename = output_dir + "locations/" + batch[j].replace(".png",".csv")
         if os.path.isfile(filename):
             print("Image", batch[j], "already done")
             continue
 
         print("Image",batch[j])
 
-        os.makedirs("/".join(filename.split("/")[0:-1]), exist_ok=True)
         probmap = predictions[j].squeeze()
         pred = utils.metrics.probmap_to_pred(probmap, config_vars["boundary_boost_factor"])
         label = utils.metrics.pred_to_label(pred, config_vars["cell_min_size"])
@@ -163,11 +155,13 @@ while i < total_num_images:
     
         label = label.astype(np.int16)
         if SAVE_OUTPUT == "masks" or SAVE_OUTPUT == "both":
-            skimage.io.imsave(filename.replace(".csv",".png"), label)
+            os.makedirs(output_dir+"segm", exist_ok=True)
+            os.makedirs(output_dir+"prob", exist_ok=True)
+            skimage.io.imsave(output_dir+'segm/'+batch[j], label)
+            skimage.io.imsave(output_dir+'prob/'+batch[j], probmap)	    
 
         # Save object properties
         if SAVE_OUTPUT == "locations" or SAVE_OUTPUT == "both":
-            os.makedirs("/".join(filename.split("/")[0:-1]), exist_ok=True)
             nuclei_df = pd.DataFrame(columns=["Nuclei_Location_Center_X","Nuclei_Location_Center_Y","Orientation"])
             regions = skimage.measure.regionprops(label)
 
@@ -180,6 +174,6 @@ while i < total_num_images:
                     nuclei_df.loc[idx] = {"Nuclei_Location_Center_X": col, "Nuclei_Location_Center_Y": row, "Orientation": angle}
                     idx += 1
 
-            nuclei_df.to_csv(filename, index=False)
+            nuclei_df.to_csv(output_dir+'locations/'+batch[j].replace(".png",".csv"), index=False)
 
 

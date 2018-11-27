@@ -7,7 +7,8 @@
 # In[ ]:
 
 
-get_ipython().run_line_magic('matplotlib', 'inline')
+#get_ipython().run_line_magic('matplotlib', 'inline')
+
 
 
 # In[ ]:
@@ -37,7 +38,7 @@ from config import config_vars
 # Partition of the data to make predictions (test or validation)
 partition = "validation"
 
-experiment_name = '01'
+experiment_name = '02_modified_model'
 
 config_vars = utils.dirtools.setup_experiment(config_vars, experiment_name)
 
@@ -126,8 +127,9 @@ for image_name in all_images:
     
     # Load predictions
     pred_filename = os.path.join(config_vars["labels_out_dir"], image_name)
-    prediction = skimage.io.imread(pred_filename.replace(".png",".tif"))
-    
+    #prediction = skimage.io.imread(pred_filename.replace(".png",".tif"))
+    prediction = skimage.io.imread(pred_filename)    
+
     # Apply object dilation
     if config_vars["object_dilation"] > 0:
         struct = skimage.morphology.square(config_vars["object_dilation"])
