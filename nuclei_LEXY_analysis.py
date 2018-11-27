@@ -121,7 +121,7 @@ def downsample(im,binning_factor):
     
     # if sz[0] and sz[1] are not multiples of BINNING_FACTOR, reduce them to the largest multiple of BINNING_FACTOR and crop image
     newsz = (sz/BINNING_FACTOR).astype(int)
-    cropsz = sz*BINNING_FACTOR
+    cropsz = newsz*BINNING_FACTOR
     im = im[0:cropsz[0],0:cropsz[1]]
 
     newim = im.reshape((newsz[0],binning_factor,newsz[1],binning_factor))
