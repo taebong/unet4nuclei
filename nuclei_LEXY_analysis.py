@@ -120,8 +120,8 @@ def downsample(im,binning_factor):
     sz = np.array(im.shape)
     
     # if sz[0] and sz[1] are not multiples of BINNING_FACTOR, reduce them to the largest multiple of BINNING_FACTOR and crop image
-    newsz = (sz/BINNING_FACTOR).astype(int)
-    cropsz = newsz*BINNING_FACTOR
+    newsz = (sz/binning_factor).astype(int)
+    cropsz = newsz*binning_factor
     im = im[0:cropsz[0],0:cropsz[1]]
 
     newim = im.reshape((newsz[0],binning_factor,newsz[1],binning_factor))
@@ -297,8 +297,8 @@ def getLabelColorMap():
     colors = plt.cm.jet(range(256))
     np.random.shuffle(colors)
     colors[0] = (0.,0.,0.,1.)
-    rmap = c.ListedColormap(colors)
-    return rmap
+    #rmap = c.ListedColormap(colors)
+    return colors
 
 def normalize_image(im,low=None,high=None):
     if low==None:
@@ -313,7 +313,7 @@ def normalize_image(im,low=None,high=None):
     
     return im    
 
-def showSegmentation(label_im,norm_im1,norm_im2,rmap,zoom=2,fig=None,t=None,state=None,vmax=256):
+def showSegmentation(label_im,norm_im1,norm_im2,rmap,zoom=2,fig=None,t=None,state=None):
     
     sz = label_im.shape
     
@@ -327,7 +327,7 @@ def showSegmentation(label_im,norm_im1,norm_im2,rmap,zoom=2,fig=None,t=None,stat
     w,h = plt.figaspect(sz[0]/sz[1])
     fig.set_size_inches(w * zoom, h * zoom)
     
-    axs[0][0].imshow(label_im, cmap=rmap, norm=None,vmin=0,vmax=vmax);    
+    axs[0][0].imshow(rmap[label_im%256]);    
     axs[0][1].imshow(segmentation.mark_boundaries(norm_im1,label_im,mode='inner',color=None,outline_color=[1,0,0]));
     axs[1][0].imshow(segmentation.mark_boundaries(norm_im2,label_im,mode='inner',color=None,outline_color=[1,0,0]));
     axs[1][1].imshow(segmentation.mark_boundaries(combined,label_im,mode='inner',color=None,outline_color=[1,1,1]));
