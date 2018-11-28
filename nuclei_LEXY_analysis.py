@@ -261,7 +261,7 @@ print("Done!\n")
 
 #Track nuclei
 print("tracking nuclei....")
-df_data = tp.link(df_data,50,pos_columns=['cent_x','cent_y'],t_column='frame')
+df_data = tp.link(df_data,25,pos_columns=['cent_x','cent_y'],t_column='frame')
 df_data = df_data.rename(columns={'particle':'ID'})
 df_data = df_data.sort_values(['frame','ID'])
 df_data['ID'] = df_data['ID']+1
