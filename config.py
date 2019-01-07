@@ -25,7 +25,7 @@ config_vars["create_split_files"] = False
 
 ## Randomly choose training and validation images.
 ## The remaining fraction is reserved for test images.
-config_vars["training_fraction"] = 0.5
+config_vars["training_fraction"] = 0.75
 config_vars["validation_fraction"] = 0.25
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -39,7 +39,7 @@ config_vars["pixel_depth"] = 8
 # 01.04 PRE-PROCESSING OF ANNOTATIONS
 
 ## Area of minimun object in pixels
-config_vars["min_nucleus_size"] = 25
+config_vars["min_nucleus_size"] = 15
 
 ## Pixels of the boundary (min 2 pixels)
 config_vars["boundary_size"] = 2
@@ -49,7 +49,7 @@ config_vars["boundary_size"] = 2
 
 ## Elastic deformation takes a lot of times to compute. 
 ## It is computed only once in the preprocessing. 
-config_vars["augment_images"] =  False
+config_vars["augment_images"] =  True
 
 ## Augmentation parameters. 
 ## Calibrate parameters using the 00-elastic-deformation.ipynb
