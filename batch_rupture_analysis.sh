@@ -1,6 +1,6 @@
-inputdir="/n/groups/mitchison/Tae/SpinningDisk/20190104_cTY48_rupture_assay/Rupture/"
+input_dir="/n/groups/mitchison/Tae/SpinningDisk/20190104_cTY48_rupture_assay/Rupture/"
 
-outputdir="/home/ty118/analysis/unet4nuclei_outputs/20190104_cTY48_rupture_assay_Rupture/"
+output_dir="/home/ty118/analysis/unet4nuclei_outputs/20190104_cTY48_rupture_assay_Rupture/"
 
 experiment_name="03"  #No need to change unless you want to change trained model
 binning_factor=2
