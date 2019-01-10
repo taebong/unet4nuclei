@@ -21,6 +21,7 @@ import trackpy as tp
 
 import os,glob
 import re
+import gc
 
 if len(sys.argv) != 3:
     print("Use: python nuclei_LEXY_analysis.py raw_image_dir analysis_dir")
@@ -29,9 +30,15 @@ else:
     raw_image_dir = sys.argv[1]    #raw image pth
     analysis_dir = sys.argv[2]   #analysis pth
 
+code_ver = 'v1.0'
+refinement_setting = {'N':3, 'repeat': 1}   #segmentation refinement setting. 
+#N=3, repeat=1 for rupture assay, and N=10, repeat=2 for import/export assay 
+tracking_setting = {'link_distance':25,'memory':1}     #nucleus tracking setting
+    
 basename = ''
-AcqStates = ['PreLitZScan','PreLit','Lit','PostLit']
-reg_cycle = '(?<=[PreLitZScan|PreLit|Lit|PostLit])(?P<Cycle>\d*)(?=_w)'
+AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','Rupture']
+reg_cycle = '(?<=[PreLitZScan|PreLit|Lit|PostLit|Rupture])(?P<Cycle>\d*)(?=_w)'
+reg_Pos = '(?<=_s)(?P<Pos>\d*)'
 reg_T = '(?<=_t)(?P<T>\d*)(?=.)'
 reg_Ch = '(?<=_w\d)(?P<Ch>\d{3})'
 drop_Chs = ['447']
@@ -45,12 +52,13 @@ metadict_list = []
 for fpth in fpths:
     fname = re.split('/',fpth)[-1]
     
-    metadata = {'Filename':fname,'AcqState':np.nan,'T':0,'Ch':np.nan,'Cycle':0}
+    metadata = {'Filename':fname,'AcqState':np.nan,'T':0,'Ch':np.nan,'Cycle':0,'Pos':0}
     
     state_re = re.search('(?<=%s).*?(?=\d*_)' %basename,fname)
     T_re = re.search(reg_T,fname)
     Ch_re = re.search(reg_Ch,fname)
     cyc_re = re.search(reg_cycle,fname)
+    Pos_re = re.search(reg_Pos,fname)
     
     if state_re:
         metadata['AcqState'] = state_re.group(0)
@@ -64,16 +72,21 @@ for fpth in fpths:
     if cyc_re:
         if len(cyc_re.group('Cycle'))>0:
             metadata['Cycle'] = int(cyc_re.group('Cycle'))
+            
+    if Pos_re:
+        if len(Pos_re.group('Pos'))>0:
+            metadata['Pos'] = int(Pos_re.group('Pos'))
         
     metadict_list.append(metadata)
     
 df_meta = pd.DataFrame(metadict_list)
 df_meta['AcqState'] = pd.Categorical(df_meta['AcqState'],AcqStates)
-df_meta[['T','Cycle']] = df_meta[['T','Cycle']].astype(int,errors='ignore')
+df_meta[['T','Cycle','Pos']] = df_meta[['T','Cycle','Pos']].astype(int,errors='ignore')
 df_meta = df_meta.loc[[ch not in drop_Chs for ch in df_meta['Ch']]].copy()
-df_meta = df_meta.sort_values(['Cycle','AcqState','T','Ch']).reset_index(drop=True)
+df_meta = df_meta.sort_values(['Pos','Cycle','AcqState','T','Ch']).reset_index(drop=True)
 
 df_meta.head()
+
 
 
 
@@ -84,12 +97,13 @@ dict_list = []
 for fpth in fpths:
     fname = re.split('/',fpth)[-1]
     
-    d = {'Filename':fname,'AcqState':np.nan,'T':0,'Ch':np.nan,'Cycle':0}
+    d = {'Filename':fname,'AcqState':np.nan,'T':0,'Ch':np.nan,'Cycle':0,'Pos':0}
     
     state_re = re.search('(?<=%s).*?(?=\d*_)' %basename,fname)
     T_re = re.search(reg_T,fname)
     Ch_re = re.search(reg_Ch,fname)
     cyc_re = re.search(reg_cycle,fname)
+    Pos_re = re.search(reg_Pos,fname)
     
     if state_re:
         d['AcqState'] = state_re.group(0)
@@ -103,17 +117,20 @@ for fpth in fpths:
     if cyc_re:
         if len(cyc_re.group('Cycle'))>0:
             d['Cycle'] = int(cyc_re.group('Cycle'))
+            
+    if Pos_re:
+        if len(Pos_re.group('Pos'))>0:
+            d['Pos'] = int(Pos_re.group('Pos'))
         
     dict_list.append(d)
     
 df_seg = pd.DataFrame(dict_list)
 df_seg['AcqState'] = pd.Categorical(df_seg['AcqState'],AcqStates)
-df_seg[['T','Cycle']] = df_seg[['T','Cycle']].astype(int,errors='ignore')
+df_seg[['T','Cycle','Pos']] = df_seg[['T','Cycle','Pos']].astype(int,errors='ignore')
 df_seg = df_seg.loc[[ch not in drop_Chs for ch in df_seg['Ch']]].copy()
-df_seg = df_seg.sort_values(['Cycle','AcqState','T','Ch']).reset_index(drop=True)
+df_seg = df_seg.sort_values(['Pos','Cycle','AcqState','T','Ch']).reset_index(drop=True)
 
 df_seg.head()
-
 
 
 def downsample(im,binning_factor):
@@ -134,70 +151,88 @@ def get_time(fpth):
 
 
 
-# refine segmentation: take intersection of N consecutive images, and watershed. Do this forward and backwarad
+
+# refine segmentation: take intersection of N consecutive images, and watershed. Do this forward and backward and repeat
 print('refining segmentation....')
 os.makedirs(analysis_dir+'segm_refined/',exist_ok=True)
 
-N = 10
-repeat = 2
+N = refinement_setting['N']
+repeat = refinement_setting['repeat']
 
-cyc_grp = df_seg.groupby('Cycle')
-for cyc,df in cyc_grp:
-    print("Cycle %d processing" %int(cyc))
-    
-    #load segmentation results
-    labels = []
+same_previous_setting = False
+if os.path.isfile(analysis_dir+'segm_refined/refinement_setting.json'):
+    with open(analysis_dir+'segm_refined/refinement_setting.json','r') as fp:
+        m = json.load(fp)    
+    same_previous_setting = (m['Code_ver']==code_ver) & (m['N']==N) & (m['repeat']==repeat)
 
-    for i,row in df.reset_index().iterrows():
-        label = io.imread(analysis_dir+'segm/'+row['Filename'])
-        labels.append(label)
-    labels = np.array(labels)
-    segs = labels>0
-    
-    #Foward and backward
-    k = 0
-    while (k<2*(repeat+1)):
-        for i in range(df.shape[0]-N):
-            intersect = np.prod(segs[i:i+N],axis=0)
-            intersect_l = measure.label(intersect)
-            distances = mh.distance(segs[i])
-            surface = (distances.max() - distances)
+if same_previous_setting:
+    print('refined segmentation already exists')
+else:
+    df_grp = df_seg.groupby(['Pos','Cycle'])
+    for ind,df in df_grp:
+        print("Pos %d, Cycle %d processing" %ind)
 
-            areas = mh.cwatershed(surface,intersect_l)
-            new_label = areas*segs[i]
-            
-            labels[i] = new_label
-            segs[i] = new_label>0
+        #load segmentation results
+        labels = []
 
-        labels = labels[::-1]
-        segs = segs[::-1]
-        k += 1
-        
-    #Save refined segmentations
-    for i,row in df.reset_index().iterrows():
-        io.imsave(analysis_dir+'segm_refined/'+row['Filename'],labels[i])
+        for i,row in df.reset_index().iterrows():
+            label = io.imread(analysis_dir+'segm/'+row['Filename'])
+            labels.append(label)
+        labels = np.array(labels)
+        segs = labels>0
 
-print('Done! \n')
+        #Foward and backward
+        k = 0
+        while (k<2*(repeat+1)):
+            for i in range(df.shape[0]-N):
+                intersect = np.prod(segs[i:i+N],axis=0)
+                intersect_l = measure.label(intersect)
+                distances = mh.distance(segs[i])
+                surface = (distances.max() - distances)
+
+                areas = mh.cwatershed(surface,intersect_l)
+                new_label = areas*segs[i]
+
+                labels[i] = new_label
+                segs[i] = new_label>0
+
+            labels = labels[::-1]
+            segs = segs[::-1]
+            k += 1
+
+        #Save refined segmentations
+        for i,row in df.reset_index().iterrows():
+            io.imsave(analysis_dir+'segm_refined/'+row['Filename'],labels[i])
+
+    print('Done! \n')
+
+    # save refining setup
+    m = {'Code_ver':code_ver,'N':N,'repeat':repeat}
+
+    with open(analysis_dir+'segm_refined/refinement_setting.json','w') as fp:
+        json.dump(m,fp)
 
 
-print("retrieving raw images and segmentation results....")
+print("extracting features from raw images and segmentation results....")
 df_data = pd.DataFrame()
 lexy_bg = 1e5 #background level
 
+current_pos = -99
 for i,row in df_seg.iterrows():
-    label=io.imread(analysis_dir+'segm_refined/'+row['Filename'])
-    if len(label)==0:
-        continue
+    if current_pos != row['Pos']:
+        fr = 0    #reset frame number to 0 for each field
+        current_pos = row['Pos']
     
-    lexy_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle']) 
+    label=io.imread(analysis_dir+'segm_refined/'+row['Filename'])
+    
+    lexy_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
+                                     & (df_meta['Pos']==row['Pos'])
                                      & (df_meta['AcqState']==row['AcqState']) 
                                    & (df_meta['Ch']=='561') 
                                    & (df_meta['T']==row['T']))[0][0],'Filename']
     lexy = io.imread(raw_image_dir+lexy_fname)
-    if len(lexy)==0:
-        continue
     
-    if 'myVar' not in locals():
+    if 'binning_factor' not in locals():
         binning_factor = int(lexy.shape[0]/label.shape[0])
 
     lexy = downsample(lexy,binning_factor)
@@ -206,17 +241,16 @@ for i,row in df_seg.iterrows():
         lexy_bg = lexy.min()
     
     nucl_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle']) 
+                                     & (df_meta['Pos']==row['Pos'])
                                      & (df_meta['AcqState']==row['AcqState']) 
                                    & (df_meta['Ch']=='642') 
                                    & (df_meta['T']==row['T']))[0][0],'Filename']
     nucl = io.imread(raw_image_dir+nucl_fname)
     
-    if len(nucl)==0:
-        continue
     nucl = downsample(nucl,binning_factor)
     
-    props_lexy = measure.regionprops(label,intensity_image=lexy)
-    props_nucl = measure.regionprops(label,intensity_image=nucl)
+    props_lexy = measure.regionprops(label,intensity_image=lexy,coordinates='rc')
+    props_nucl = measure.regionprops(label,intensity_image=nucl,coordinates='rc')
     
     macro_T = get_time(raw_image_dir+lexy_fname)
     
@@ -242,17 +276,22 @@ for i,row in df_seg.iterrows():
         stdint_nucl = np.std(intim_nucl[intim_nucl>0])
         
         newlist.append({'AcqState':row['AcqState'],'Cycle':row['Cycle'],
-                        'pretrack_ID':j+1,
-                         'cent_x':cent[0],'cent_y':cent[1],
+                        'Pos':row['Pos'],
+                        'pretrack_ID':p_nucl.label,
+                         'cent_x':cent[1],'cent_y':cent[0],
                         'orientation':orientation,'area':area,
                         'perimeter':perimeter,
                         'eccen':eccen,'meanint_LEXY':meanint_LEXY,
                         'meanint_nucl':meanint_nucl,'maxint_LEXY':maxint_LEXY,
                         'minint_LEXY':minint_LEXY,
                         'stdint_LEXY':stdint_LEXY,'stdint_nucl':stdint_nucl,
-                        'T':row['T'],'macro_T':macro_T,'frame':i})
+                        'T':row['T'],'macro_T':macro_T,'frame':fr})
         
     df_data = pd.concat((df_data,pd.DataFrame(newlist)))
+    
+    fr += 1
+    
+    del nucl, lexy, label
     
 df_data = df_data.reset_index(drop=True)
 
@@ -260,36 +299,63 @@ print("Done!\n")
 
 
 #Track nuclei
-print("tracking nuclei....")
-df_data = tp.link(df_data,25,pos_columns=['cent_x','cent_y'],t_column='frame')
-df_data = df_data.rename(columns={'particle':'ID'})
-df_data = df_data.sort_values(['frame','ID'])
-df_data['ID'] = df_data['ID']+1
-df_data = df_data.reset_index(drop=True)
-print("Done!\n")
+pos_list = df_data['Pos'].unique()
 
+link_distance = tracking_setting['link_distance']
+memory = tracking_setting['memory']
+
+df_data_tracked = pd.DataFrame()
+for pos in pos_list:
+    print("tracking nuclei for Pos %d...." %int(pos))
+    
+    df_select = df_data.loc[df_data['Pos']==pos].copy().reset_index(drop=True)
+    
+    df_select = tp.link(df_select,link_distance,
+                        pos_columns=['cent_x','cent_y'],
+                        t_column='frame',memory=memory)
+    df_select = df_select.rename(columns={'particle':'ID'})
+    df_select = df_select.sort_values(['frame','ID'])
+    df_select['ID'] = df_select['ID']+1   # to make it start from 1
+
+    df_data_tracked = pd.concat((df_data_tracked,df_select))
+    
+    print("Done!\n")
+
+df_data = df_data_tracked.reset_index(drop=True)
+
+del df_data_tracked
+del df_select
+
+# save tracking setup
+m = {'Code_ver':code_ver,'link_distance':link_distance,'memory':memory}
+
+with open(analysis_dir+'tracking_setting.json','w') as fp:
+    json.dump(m,fp)
+    
 
 #normalized meanint to PreLit average and set macro time (clock starts from the beginning of data set) 
 # and micro time (clock starts from the beginning of each cycle)
+# For rupture assay, no normalization
+
 print("normalizing....")
 
-grp = df_data.loc[df_data['AcqState']=='PreLit'].groupby(['Cycle','ID'])
-prelit_avg = grp[['meanint_LEXY','eccen','meanint_nucl','area','perimeter']].mean().reset_index().set_index(['Cycle','ID'])
-
+grp = df_data.loc[df_data['AcqState']=='PreLit'].groupby(['Pos','Cycle','ID'])
+prelit_avg = grp[['meanint_LEXY','eccen','meanint_nucl','area','perimeter']].mean().reset_index().set_index(['Pos','Cycle','ID'])
 
 for ind,row in prelit_avg.iterrows():
-    mask = (df_data['Cycle']==ind[0]) & (df_data['ID']==ind[1])
+    mask = (df_data['Pos']==ind[0]) & (df_data['Cycle']==ind[1]) & (df_data['ID']==ind[2])
     df_data.loc[mask,'meanint_LEXY_normed'] = (df_data.loc[mask,'meanint_LEXY']-lexy_bg)/(row['meanint_LEXY']-lexy_bg)
     df_data.loc[mask,'stdint_LEXY_normed'] = df_data.loc[mask,'stdint_LEXY']/(row['meanint_LEXY']-lexy_bg)
     #df_data.loc[mask,'meanint_LEXY_normed'] = (df_data.loc[mask,'meanint_LEXY']-lowest_val.at[i,'meanint_LEXY'])/(row['meanint_LEXY']-lowest_val.at[i,'meanint_LEXY'])
 
 df_data['macro_T'] = df_data['macro_T'] - np.min(df_data['macro_T'])
     
-grp_T = df_data.groupby('Cycle')['macro_T'].min().reset_index().set_index('Cycle')
-for cyc,row in grp_T.iterrows():
-    mask = (df_data['Cycle']==cyc)
+grp_T = df_data.groupby(['Pos','Cycle'])['macro_T'].min().reset_index().set_index(['Pos','Cycle'])
+for ind,row in grp_T.iterrows():
+    mask = (df_data['Pos']==ind[0]) & (df_data['Cycle']==ind[1])
     df_data.loc[mask,'micro_T'] = df_data.loc[mask,'macro_T']-row['macro_T']
     
+
 print("Done!\n")
 
 
@@ -313,7 +379,7 @@ def normalize_image(im,low=None,high=None):
     
     return im    
 
-def showSegmentation(label_im,norm_im1,norm_im2,rmap,zoom=2,fig=None,t=None,state=None):
+def showSegmentation(label_im,norm_im1,norm_im2,rmap,df_track,zoom=3,fig=None,t=None,state=None):
     
     sz = label_im.shape
     
@@ -324,8 +390,8 @@ def showSegmentation(label_im,norm_im1,norm_im2,rmap,zoom=2,fig=None,t=None,stat
     else:
         fig,axs = plt.subplots(2, 2,sharex=True, sharey=True);
     
-    w,h = plt.figaspect(sz[0]/sz[1])
-    fig.set_size_inches(w * zoom, h * zoom)
+    w,h = plt.figaspect(sz[0]/sz[1]);
+    fig.set_size_inches(w * zoom, h * zoom);
     
     axs[0][0].imshow(rmap[label_im%256]);    
     axs[0][1].imshow(segmentation.mark_boundaries(norm_im1,label_im,mode='inner',color=None,outline_color=[1,0,0]));
@@ -334,12 +400,14 @@ def showSegmentation(label_im,norm_im1,norm_im2,rmap,zoom=2,fig=None,t=None,stat
     
     labels = np.unique(label_im)
     
-    X,Y = np.meshgrid(np.arange(sz[1]),np.arange(sz[0]))
+    #X,Y = np.meshgrid(np.arange(sz[1]),np.arange(sz[0]))
     
-    for i,l in enumerate(labels[labels!=0]):
-        mask = (label_im == l)
-        xc = np.sum(X*mask)/np.sum(mask)
-        yc = np.sum(Y*mask)/np.sum(mask)
+    for l in labels[labels!=0]:
+        #mask = (label_im == l)
+        #xc = np.sum(X*mask)/np.sum(mask)
+        #yc = np.sum(Y*mask)/np.sum(mask)
+        
+        xc,yc=df_track.loc[df_track['ID']==l,['cent_x','cent_y']].values[0]
         
         for ax in axs.flatten()[:3]:
             ax.text(xc,yc,l,fontsize=3*zoom,
@@ -347,20 +415,20 @@ def showSegmentation(label_im,norm_im1,norm_im2,rmap,zoom=2,fig=None,t=None,stat
                      verticalalignment='center',color='k');
             
     for ax in axs.flatten():
-        ax.set_yticks([])
-        ax.set_xticks([])
+        ax.set_yticks([]);
+        ax.set_xticks([]);
     
     if t!=None: #add timepoint
         axs[0][0].text(sz[1]-10,10,'%d sec' %t,color='w',fontsize=7*zoom,horizontalalignment='right',
-                       verticalalignment='top', bbox=dict(facecolor='black', alpha=0.5))
+                       verticalalignment='top', bbox=dict(facecolor='black', alpha=0.5));
     
     if state: #add acquisition state
         axs[0][0].text(sz[1]-10,sz[0]-10,'%s' %state,color='w',fontsize=7*zoom,horizontalalignment='right',
-                       verticalalignment='bottom', bbox=dict(facecolor='black', alpha=0.5))
+                       verticalalignment='bottom', bbox=dict(facecolor='black', alpha=0.5));
     
     
     # Remove horizontal space between axes
-    fig.subplots_adjust(hspace=0.02,wspace=0.02)
+    fig.subplots_adjust(hspace=0.02,wspace=0.02);
     
     fig.tight_layout()
 
@@ -378,12 +446,16 @@ os.makedirs(savedir,exist_ok=True)
 
 rmap = getLabelColorMap()
 
+fig = plt.figure();
 for i,row in df_seg.iterrows():
-    df_fr = df_data.loc[df_data['frame']==i]
+    df_fr = df_data.loc[(df_data['Cycle']==row['Cycle']) 
+                        & (df_data['Pos']==row['Pos'])
+                       & (df_data['T']==row['T'])].copy()
     
     label=io.imread(analysis_dir+'segm_refined/'+row['Filename'])
     
-    lexy_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle']) 
+    lexy_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
+                                     & (df_meta['Pos']==row['Pos'])
                                      & (df_meta['AcqState']==row['AcqState']) 
                                    & (df_meta['Ch']=='561') 
                                    & (df_meta['T']==row['T']))[0][0],'Filename']
@@ -391,6 +463,7 @@ for i,row in df_seg.iterrows():
     lexy = downsample(lexy,binning_factor)
     
     nucl_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
+                                     & (df_meta['Pos']==row['Pos'])
                                      & (df_meta['AcqState']==row['AcqState']) 
                                    & (df_meta['Ch']=='642') 
                                    & (df_meta['T']==row['T']))[0][0],'Filename']
@@ -410,20 +483,24 @@ for i,row in df_seg.iterrows():
     # change from pretrack label to posttrack label
     id_map = df_fr[['pretrack_ID','ID']].drop_duplicates().set_index('pretrack_ID')
     new_label = label.copy() #post track label
+
     for preID in np.unique(label[label>0]):
-        new_label[label==preID] = id_map.at[preID,'ID']
-    
-    fig = plt.figure();
-    
+        new_label = np.where(label==preID,id_map.at[preID,'ID'],new_label)
+
     fig,axs = showSegmentation(new_label,lexy,nucl,
-                               rmap,fig=fig,
+                               rmap,df_fr,fig=fig,
                                t=df_fr['micro_T'].values[0],
                               state=row['AcqState']);
     
-    fig.savefig(savedir+'frame%06d_Cycle%03d_%s_%03d.jpg' %(i,int(row['Cycle']),row['AcqState'],int(row['T'])),
+    fig.savefig(savedir+'frame%06d_Pos%02d_Cycle%03d_%s_%03d.jpg' %(i,int(row['Pos']),int(row['Cycle']),row['AcqState'],int(row['T'])),
                frameon=False,facecolor=None,edgecolor=None,quality=80);
 
-    plt.close();
+    plt.clf()
+    
+    del df_fr
+    del lexy, nucl, label
+    
+    gc.collect()
+    
 
 print("Done!\n")
-
