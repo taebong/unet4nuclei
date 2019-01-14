@@ -164,7 +164,10 @@ same_previous_setting = False
 if os.path.isfile(analysis_dir+'segm_refined/refinement_setting.json'):
     with open(analysis_dir+'segm_refined/refinement_setting.json','r') as fp:
         m = json.load(fp)    
-    same_previous_setting = (m['Code_ver']==code_ver) & (m['N']==N) & (m['repeat']==repeat)
+    try:
+        same_previous_setting = (m['Code_ver']==code_ver) & (m['N']==N) & (m['repeat']==repeat)
+    except:
+        print("previous refinement setting cannot be loaded. Rerunning refinement..")
 
 if same_previous_setting:
     print('refined segmentation already exists')
