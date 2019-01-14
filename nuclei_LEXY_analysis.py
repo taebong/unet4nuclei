@@ -454,6 +454,7 @@ fig = plt.figure();
 for i,row in df_seg.iterrows():
     df_fr = df_data.loc[(df_data['Cycle']==row['Cycle']) 
                         & (df_data['Pos']==row['Pos'])
+                        & (df_data['AcqState']==row['AcqState'])
                        & (df_data['T']==row['T'])].copy()
     
     label=io.imread(analysis_dir+'segm_refined/'+row['Filename'])
