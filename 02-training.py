@@ -48,7 +48,7 @@ from config import config_vars
 # In[7]:
 
 
-experiment_name = '02_modified_model'
+experiment_name = '03'   #03: more training data (75% of all), do augmentation
 
 config_vars = utils.dirtools.setup_experiment(config_vars, experiment_name)
 
