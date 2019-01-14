@@ -22,6 +22,7 @@ import trackpy as tp
 import os,glob
 import re
 import gc
+import json
 
 if len(sys.argv) != 3:
     print("Use: python nuclei_LEXY_analysis.py raw_image_dir analysis_dir")
