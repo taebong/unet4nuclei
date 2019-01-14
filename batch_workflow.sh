@@ -1,9 +1,9 @@
-rootpth="/n/groups/mitchison/Tae/SpinningDisk/20190104_cTY48_rupture_assay/LEXY/"
-input_dir_pattern="Pos*"
+rootpth="/n/groups/mitchison/Tae/SpinningDisk/20190113_cTY48_cycle_arrest/"
+input_dir_pattern="*_*_Pos*"
 
 pthlists=$(ls -d $rootpth$input_dir_pattern)
 
-output_base="/home/ty118/analysis/unet4nuclei_outputs/20190104_cTY48_rupture_assay_LEXY_"
+output_base="/home/ty118/analysis/unet4nuclei_outputs/20190113_cTY48_LEXY_"
 
 experiment_name="03"  #No need to change unless you want to change trained model
 binning_factor=2
