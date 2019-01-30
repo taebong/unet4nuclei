@@ -11,16 +11,14 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib import colors as c
 
-# if len(sys.argv) != 2:
-#     print("Use: python LEXY_model_fitting.py output_dir")
-#     sys.exit()
-# else:
-#     analysis_dir = sys.argv[1]    #analysis pth
-analysis_dir = '/Users/tyyoo/MitchisonLab/analysis/unet4nuclei_outputs/20190116_cTY48_Water_2XDilution_Before/'
+if len(sys.argv) != 2:
+    print("Use: python LEXY_model_fitting.py output_dir")
+    sys.exit()
+else:
+    analysis_dir = sys.argv[1]    #analysis pth
 
 df_data = pd.read_csv(analysis_dir+'nuclei_tracking_results.csv')
 #df_data.head(20)
-
 
 transition_times = df_data.groupby('AcqState')['micro_T'].min().reset_index().set_index('AcqState')
 
@@ -120,25 +118,23 @@ else:
     p0 = [1/10,1/30,5,1]
     bounds = ([0,0,1,0.5],[np.inf,np.inf,np.inf,np.inf])
 
-# print("Fitting %s....." %model.__name__)
+print("Fitting %s....." %model.__name__)
 
-# log_file = open(analysis_dir+"fitting_logfile.txt",'w') 
-# log_file.write("Fitting model: "+model.__name__+"\n")
+log_file = open(analysis_dir+"fitting_logfile.txt",'w') 
+log_file.write("Fitting model: "+model.__name__+"\n")
 
-# df_res = fit_model(df_data,model=model,p0=p0,bounds=bounds,log_file=log_file)
+df_res = fit_model(df_data,model=model,p0=p0,bounds=bounds,log_file=log_file)
 
-# # merge with prelit average
-# grp = df_data.groupby(['Pos','Cycle','ID'])
-# prelit_avg = grp[['meanint_LEXY','eccen','meanint_nucl','area','perimeter']].mean().reset_index().set_index(['Pos','Cycle','ID'])
-# df_res = df_res.join(prelit_avg)
-# df_res.head()
+# merge with prelit average
+grp = df_data.groupby(['Pos','Cycle','ID'])
+prelit_avg = grp[['meanint_LEXY','eccen','meanint_nucl','area','perimeter']].mean().reset_index().set_index(['Pos','Cycle','ID'])
+df_res = df_res.join(prelit_avg)
+df_res.head()
 
-# # save results
-# df_res.to_csv(analysis_dir+'model_fit_results.csv')
+# save results
+df_res.to_csv(analysis_dir+'model_fit_results.csv')
 
-# log_file.close()
-
-df_res = pd.read_csv(analysis_dir+"model_fit_results.csv")
+log_file.close()
 
 print('Saving data and fitted model plots....')
 os.makedirs(analysis_dir+'model_fit_plots/',exist_ok=True)
