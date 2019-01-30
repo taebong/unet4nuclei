@@ -41,7 +41,7 @@ def LINuS_model(t,kout,kin,b,c,transition_times=transition_times):
     t1 = transition_times.at['Lit','micro_T']
     t2 = transition_times.at['PostLit','micro_T']
     y = (t<t1)*a   #PreLit
-    y = y + ((t>=t1) & (t<t2))*(b-a)*(1-np.exp(-(t-t1)*kin))   #Lit
+    y = y + ((t>=t1) & (t<t2))*((b-a)*(1-np.exp(-(t-t1)*kin))+a)   #Lit
     
     top = (b-a)*(1-np.exp(-(t2-t1)*kin))+a
     
@@ -115,7 +115,7 @@ if (means['Lit']<means['PreLit']):
     bounds = ([0,0,0,0.5],[np.inf,np.inf,1,np.inf])
 else:
     model = LINuS_model
-    p0 = [1/10,1/30,5,1]
+    p0 = [1/10,1/30,2,1]
     bounds = ([0,0,1,0.5],[np.inf,np.inf,np.inf,np.inf])
 
 print("Fitting %s....." %model.__name__)
@@ -141,7 +141,7 @@ os.makedirs(analysis_dir+'model_fit_plots/',exist_ok=True)
 savedir  = analysis_dir+'model_fit_plots/'
 
 #check the results
-grp = df_res.groupby(['Pos','Cycle'])
+grp = df_res.reset_index().groupby(['Pos','Cycle'])
 fig = plt.figure(figsize=(8,7));
 curves_per_fig = 10
 
