@@ -47,7 +47,7 @@ drop_Chs = ['447']
 
 #Load data list
 
-fpths = glob.glob(raw_image_dir+basename+'*.TIF')
+fpths = glob.glob(raw_image_dir+basename+'*.TIF')+glob.glob(raw_image_dir+basename+'*.tif')
 
 metadict_list = []
 for fpth in fpths:
