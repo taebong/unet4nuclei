@@ -41,7 +41,7 @@ AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','Rupture']
 reg_cycle = '(?<=[PreLitZScan|PreLit|Lit|PostLit|Rupture])(?P<Cycle>\d*)(?=_w)'
 reg_Pos = '(?<=_s)(?P<Pos>\d*)'
 reg_T = '(?<=_t)(?P<T>\d*)(?=.)'
-reg_Ch = '(?<=_w\d)(?P<Ch>\d{3})'
+reg_Ch = '(?<=_w\d)(tae )?(?P<Ch>\d{3})'
 drop_Chs = ['447']
 #binning_factor = 2
 

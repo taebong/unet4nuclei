@@ -1,9 +1,9 @@
-rootpth="/n/groups/mitchison/Tae/SpinningDisk/20190112_cTY48_Osmotic_shock/"
-input_dir_pattern="*"
+rootpth="/n/groups/mitchison/Tae/SpinningDisk/20190315_Ren_LongTL/"
+input_dir_pattern="Well*/"
 
 pthlists=$(ls -d $rootpth$input_dir_pattern)
 
-output_base="/home/ty118/analysis/unet4nuclei_outputs/20190112_cTY48_"
+output_base="/home/ty118/analysis/unet4nuclei_outputs/20190315_Ren_LongTL/"
 
 experiment_name="03"  #No need to change unless you want to change trained model
 binning_factor=2
@@ -11,7 +11,7 @@ listname="seg_image_list.csv"
 
 for pth in $pthlists
 do
-input_dir=$pth"/" 
+input_dir=$pth 
 output_dir=$output_base$(basename $pth)"/"
 mkdir -p $output_base$(basename $pth)
 

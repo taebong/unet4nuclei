@@ -10,6 +10,7 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=taeyeon_yoo@hms.harvard.edu
 
+module purge
 module load gcc/6.2.0
 module load cuda/9.0
 module load python/3.6.0
