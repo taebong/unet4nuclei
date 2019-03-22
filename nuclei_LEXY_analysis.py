@@ -34,7 +34,7 @@ else:
 code_ver = 'v1.0'
 refinement_setting = {'N':3, 'repeat': 1}   #segmentation refinement setting. 
 #N=3, repeat=1 for rupture assay, and N=10, repeat=2 for import/export assay 
-tracking_setting = {'link_distance':25,'memory':1}     #nucleus tracking setting
+tracking_setting = {'link_distance':25,'memory':1,'adaptive_step':0.99,'adaptive_stop':None}     #nucleus tracking setting
     
 basename = ''
 AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','Rupture']
@@ -307,6 +307,8 @@ pos_list = df_data['Pos'].unique()
 
 link_distance = tracking_setting['link_distance']
 memory = tracking_setting['memory']
+adaptive_step = tracking_setting['adaptive_step']
+adaptive_stop = tracking_setting['adaptive_stop']
 
 df_data_tracked = pd.DataFrame()
 for pos in pos_list:
@@ -316,7 +318,8 @@ for pos in pos_list:
     
     df_select = tp.link(df_select,link_distance,
                         pos_columns=['cent_x','cent_y'],
-                        t_column='frame',memory=memory)
+                        t_column='frame',memory=memory,
+                        adaptive_step=adaptive_step,adaptive_stop=adaptive_stop)
     df_select = df_select.rename(columns={'particle':'ID'})
     df_select = df_select.sort_values(['frame','ID'])
     df_select['ID'] = df_select['ID']+1   # to make it start from 1
@@ -331,7 +334,7 @@ del df_data_tracked
 del df_select
 
 # save tracking setup
-m = {'Code_ver':code_ver,'link_distance':link_distance,'memory':memory}
+m = {'Code_ver':code_ver,'link_distance':link_distance,'memory':memory,'adaptive_step':adaptive_step,'adaptive_stop':adaptive_stop}
 
 with open(analysis_dir+'tracking_setting.json','w') as fp:
     json.dump(m,fp)
