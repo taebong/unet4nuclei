@@ -34,7 +34,7 @@ else:
 code_ver = 'v1.0'
 refinement_setting = {'N':3, 'repeat': 1}   #segmentation refinement setting. 
 #N=3, repeat=1 for rupture assay, and N=10, repeat=2 for import/export assay 
-tracking_setting = {'link_distance':25,'memory':1,'adaptive_step':0.99,'adaptive_stop':None}     #nucleus tracking setting
+tracking_setting = {'link_distance':25,'memory':1,'adaptive_step':0.99,'adaptive_stop':5}     #nucleus tracking setting
     
 basename = ''
 AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','Rupture']
