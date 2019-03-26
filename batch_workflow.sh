@@ -1,9 +1,9 @@
-rootpth="/n/groups/mitchison/Tae/SpinningDisk/20190315_Ren_LongTL/"
-input_dir_pattern="Well*/"
+rootpth="/n/groups/mitchison/Tae/SpinningDisk/20190322_cTY48_hyperosmotic_shock/"
+input_dir_pattern="*/"
 
 pthlists=$(ls -d $rootpth$input_dir_pattern)
 
-output_base="/home/ty118/analysis/unet4nuclei_outputs/20190315_Ren_LongTL/"
+output_base="/home/ty118/analysis/unet4nuclei_outputs/20190322_cTY48_hyperosmotic_shock/"
 
 experiment_name="03"  #No need to change unless you want to change trained model
 binning_factor=2
@@ -20,6 +20,8 @@ echo $input_dir
 echo $output_dir
 
 image_list_pth="$output_dir$listname"
+
+cp batch_workflow.sh $output_dir
 
 python generateImageLists.py $input_dir $output_dir
 
