@@ -31,15 +31,15 @@ else:
     raw_image_dir = sys.argv[1]    #raw image pth
     analysis_dir = sys.argv[2]   #analysis pth
 
-code_ver = 'v1.0'
+code_ver = 'v2'
 refinement_setting = {'N':3, 'repeat': 1}   #segmentation refinement setting. 
 #N=3, repeat=1 for rupture assay, and N=10, repeat=2 for import/export assay 
 tracking_setting = {'link_distance':25,'memory':1,'adaptive_step':0.99,'adaptive_stop':5}     #nucleus tracking setting
     
 basename = ''
 AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','Rupture']
-reg_cycle = '(?<=[PreLitZScan|PreLit|Lit|PostLit|Rupture])(?P<Cycle>\d*)(?=_w)'
-reg_Pos = '(?<=[_s|_Pos])(?P<Pos>\d*)'
+#reg_cycle = '(?<=[PreLitZScan|PreLit|Lit|PostLit|Rupture])(?P<Cycle>\d*)(?=_w)'
+reg_Pos = '(?<=_s)(?P<Pos>\d*)'
 reg_T = '(?<=_t)(?P<T>\d*)(?=.)'
 reg_Ch = '(?<=_w\d)(tae )?(?P<Ch>\d{3})'
 drop_Chs = ['447']
@@ -58,7 +58,7 @@ for fpth in fpths:
     state_re = re.search('(?<=%s).*?(?=\d*_)' %basename,fname)
     T_re = re.search(reg_T,fname)
     Ch_re = re.search(reg_Ch,fname)
-    cyc_re = re.search(reg_cycle,fname)
+    cyc_re = re.search('(?<=%s)(?P<Cycle>\d*)(?=_)' %basename,fname)
     Pos_re = re.search(reg_Pos,fname)
     
     if state_re:
@@ -103,7 +103,7 @@ for fpth in fpths:
     state_re = re.search('(?<=%s).*?(?=\d*_)' %basename,fname)
     T_re = re.search(reg_T,fname)
     Ch_re = re.search(reg_Ch,fname)
-    cyc_re = re.search(reg_cycle,fname)
+    cyc_re = re.search('(?<=%s)(?P<Cycle>\d*)(?=_)' %basename,fname)
     Pos_re = re.search(reg_Pos,fname)
     
     if state_re:
