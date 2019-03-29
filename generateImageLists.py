@@ -20,10 +20,10 @@ os.makedirs(savedir,exist_ok=True)
 basename = ''
 AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','Rupture']
 reg_T = '(?<=_t)(?P<T>\d*)(?=.TIF)'
-reg_Ch = '(?<=_w\d)(tae )?(?P<Ch>\d{3})'
-drop_Chs = ['447']
+reg_Ch = '(?<=_w\d)(tae |Fluo )?(?P<Ch>(\d{3}|.*?))(?=_)'
+drop_Chs = ['447','Cyan']
 
-keep_Chs = ['642']
+keep_Chs = ['642','Far-Red']
 keep_AcqStates = ['PreLit','Lit','PostLit','Rupture']
 os.makedirs(savedir,exist_ok=True)
 

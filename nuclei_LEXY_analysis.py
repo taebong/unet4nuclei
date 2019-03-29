@@ -31,7 +31,7 @@ else:
     raw_image_dir = sys.argv[1]    #raw image pth
     analysis_dir = sys.argv[2]   #analysis pth
 
-code_ver = 'v2'
+code_ver = 'v3'
 refinement_setting = {'N':3, 'repeat': 1}   #segmentation refinement setting. 
 #N=3, repeat=1 for rupture assay, and N=10, repeat=2 for import/export assay 
 tracking_setting = {'link_distance':25,'memory':1,'adaptive_step':0.99,'adaptive_stop':5}     #nucleus tracking setting
@@ -41,8 +41,10 @@ AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','Rupture']
 #reg_cycle = '(?<=[PreLitZScan|PreLit|Lit|PostLit|Rupture])(?P<Cycle>\d*)(?=_w)'
 reg_Pos = '(?<=_s)(?P<Pos>\d*)'
 reg_T = '(?<=_t)(?P<T>\d*)(?=.)'
-reg_Ch = '(?<=_w\d)(tae )?(?P<Ch>\d{3})'
-drop_Chs = ['447']
+reg_Ch = '(?<=_w\d)(tae |Fluo )?(?P<Ch>(\d{3}|.*?))(?=_)'
+drop_Chs = ['447','Cyan']
+nucl_Chs = ['642','Far-Red']
+lexy_Chs = ['561','Red']
 #binning_factor = 2
 
 #Load data list
@@ -58,7 +60,7 @@ for fpth in fpths:
     state_re = re.search('(?<=%s).*?(?=\d*_)' %basename,fname)
     T_re = re.search(reg_T,fname)
     Ch_re = re.search(reg_Ch,fname)
-    cyc_re = re.search('(?<=%s)(?P<Cycle>\d*)(?=_)' %basename,fname)
+    cyc_re = re.search('(?P<Cycle>\d*)(?=_)',fname)
     Pos_re = re.search(reg_Pos,fname)
     
     if state_re:
@@ -232,7 +234,7 @@ for i,row in df_seg.iterrows():
     lexy_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
                                      & (df_meta['Pos']==row['Pos'])
                                      & (df_meta['AcqState']==row['AcqState']) 
-                                   & (df_meta['Ch']=='561') 
+                                   & np.array([ch in lexy_Chs for ch in df_meta['Ch']]) 
                                    & (df_meta['T']==row['T']))[0][0],'Filename']
     lexy = io.imread(raw_image_dir+lexy_fname)
     
@@ -247,7 +249,7 @@ for i,row in df_seg.iterrows():
     nucl_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle']) 
                                      & (df_meta['Pos']==row['Pos'])
                                      & (df_meta['AcqState']==row['AcqState']) 
-                                   & (df_meta['Ch']=='642') 
+                                   & np.array([ch in nucl_Chs for ch in df_meta['Ch']]) 
                                    & (df_meta['T']==row['T']))[0][0],'Filename']
     nucl = io.imread(raw_image_dir+nucl_fname)
     
@@ -465,7 +467,7 @@ for i,row in df_seg.iterrows():
     lexy_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
                                      & (df_meta['Pos']==row['Pos'])
                                      & (df_meta['AcqState']==row['AcqState']) 
-                                   & (df_meta['Ch']=='561') 
+                                   & np.array([ch in lexy_Chs for ch in df_meta['Ch']]) 
                                    & (df_meta['T']==row['T']))[0][0],'Filename']
     lexy = io.imread(raw_image_dir+lexy_fname)
     lexy = downsample(lexy,binning_factor)
@@ -473,7 +475,7 @@ for i,row in df_seg.iterrows():
     nucl_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
                                      & (df_meta['Pos']==row['Pos'])
                                      & (df_meta['AcqState']==row['AcqState']) 
-                                   & (df_meta['Ch']=='642') 
+                                   & np.array([ch in nucl_Chs for ch in df_meta['Ch']]) 
                                    & (df_meta['T']==row['T']))[0][0],'Filename']
     nucl = io.imread(raw_image_dir+nucl_fname)
     nucl = downsample(nucl,binning_factor)
