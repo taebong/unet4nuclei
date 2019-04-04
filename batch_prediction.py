@@ -2,6 +2,7 @@
 import sys
 import os
 import os.path
+import re
 
 import numpy as np
 import pandas as pd
@@ -35,8 +36,8 @@ else:
     image_list = pd.read_csv(sys.argv[2])
     output_dir = sys.argv[3]
 
-
-image_list["DNA"] = [s.replace(IMG_EXT,".png") for s in image_list["DNA"]]
+regexp = re.compile(re.escape(IMG_EXT),re.IGNORECASE)
+image_list["DNA"] = [regexp.sub(".png",s) for s in image_list["DNA"]]
 input_dir = output_dir+"normalized_images/"
 if not os.path.isdir(input_dir):
     print("normalized images not found. Preprocess by batch_preprocess.py first") 
