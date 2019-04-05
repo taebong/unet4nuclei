@@ -1,11 +1,8 @@
 import sys
 import numpy as np
-import scipy as sp
 import pandas as pd
-import skimage
-from skimage.external import tifffile
 
-import os,glob
+import os
 import re
 
 nsysarg = len(sys.argv)
