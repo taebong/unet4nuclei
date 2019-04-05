@@ -16,12 +16,13 @@ module load python/3.6.0
 
 source nucleiseg_env/bin/activate
 
-for i in 1 2 3
-do
+
+#for i in 1 2 3
+#do
 # SPECIFY THIS!
-input_dir="/n/groups/mitchison/Tae/SpinningDisk/20181029_LEXY_20xDry_LongTL/SingleTimePoint$i/"
-output_dir="/home/ty118/analysis/unet4nuclei_outputs/20181029_SingleTP$i/"
+input_dir="/n/groups/mitchison/Tae/SpinningDisk/20190322_cTY48_hyperosmotic_shock/Control_Well1/"
+output_dir="/home/ty118/analysis/unet4nuclei_outputs/20190329_widefield_analysis_addition_test/Control_Well1/"
 
 python nuclei_LEXY_analysis.py $input_dir $output_dir
 
-done
+#done

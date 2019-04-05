@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -c 1
 #SBATCH -N 1
-#SBATCH -t 0-6:00:00
+#SBATCH -t 0-1:00:00
 #SBATCH -p gpu
 #SBATCH --gres=gpu:1
-#SBATCH --mem=4000
+#SBATCH --mem=1000
 #SBATCH -o log/batch_prediction_%j.out
 #SBTACH -e log/batch_prediction_%j.err
 #SBATCH --mail-type=ALL
