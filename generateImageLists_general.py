@@ -29,7 +29,7 @@ allfnames = os.listdir(pth)
 fnames = [regexp.match(s).group(0) for s in allfnames if regexp.match(s)]
 
 df = pd.DataFrame(fnames,columns=['DNA'])
-print(df)
+#print(df)
 
 #save image list
 df.to_csv('%sseg_image_list.csv' %savedir,index=False)
