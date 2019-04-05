@@ -1,9 +1,10 @@
-rootpth="/n/groups/mitchison/Tae/SpinningDisk/20190322_cTY48_hyperosmotic_shock/"
-input_dir_pattern="*/"
+rootpth="/n/groups/mitchison/Tae/SpinningDisk/20190329_Ren_TauTreatment_LongTL/"
+#rootpth="/n/groups/mitchison/Tae/WideField_NuclearTransport/20190321_intensity_test_20x/"
+input_dir_pattern="Well8/"
 
 pthlists=$(ls -d $rootpth$input_dir_pattern)
 
-output_base="/home/ty118/analysis/unet4nuclei_outputs/20190322_cTY48_hyperosmotic_shock/"
+output_base="/n/groups/mitchison/Tae/analysis/unet4nuclei_outputs/20190329_Ren_TauTreatment_LongTL/"
 
 experiment_name="03"  #No need to change unless you want to change trained model
 binning_factor=2
