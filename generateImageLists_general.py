@@ -7,7 +7,7 @@ import re
 
 nsysarg = len(sys.argv)
 if (nsysarg != 3) & (nsysarg != 4):
-    print("Use: python generateImageLists.py input_dir output_dir pattern(optional)")
+    print("Use: python generateImageLists_general.py input_dir output_dir pattern(optional)")
     sys.exit()
 else:
     pth = sys.argv[1]    #raw image pth
