@@ -6,6 +6,7 @@ import os
 import re
 
 nsysarg = len(sys.argv)
+print(sys.argv)
 if (nsysarg != 3) & (nsysarg != 4):
     print("Use: python generateImageLists_general.py input_dir output_dir pattern(optional)")
     sys.exit()
@@ -19,10 +20,8 @@ else:
         pattern = '.*.tif'
         regexp = re.compile(pattern,re.IGNORECASE) #inclde all tif files
 
-os.makedirs(savedir,exist_ok=True)
-
-basename = ''
-
+print(sys.argv[3])
+print(pattern)
 os.makedirs(savedir,exist_ok=True)
 
 allfnames = os.listdir(pth)

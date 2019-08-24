@@ -16,5 +16,5 @@ module load python/3.6.0
 
 source nucleiseg_env/bin/activate
 
-#python 01-preprocessing.py
+python 01-preprocessing.py
 python 02-training.py

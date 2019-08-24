@@ -1,12 +1,14 @@
-rootpth="/n/groups/mitchison/Tae/SpinningDisk/20190329_Ren_TauTreatment_LongTL/"
+rootpth="/n/groups/mitchison/Tae/SpinningDisk/20190822_cTY52_GlcNAz_titration/"
 #rootpth="/n/groups/mitchison/Tae/WideField_NuclearTransport/20190321_intensity_test_20x/"
-input_dir_pattern="Well8/"
+input_dir_pattern="Well*/"
 
 pthlists=$(ls -d $rootpth$input_dir_pattern)
 
-output_base="/n/groups/mitchison/Tae/analysis/unet4nuclei_outputs/20190329_Ren_TauTreatment_LongTL/"
+output_base="/n/groups/mitchison/Tae/analysis/unet4nuclei_outputs/20190822_cTY52_GlcNAz_titration/"
 
-experiment_name="03"  #No need to change unless you want to change trained model
+#experiment_name="01_MEF"  #No need to change unless you want to change trained model
+experiment_name="03"    #03 for U2OS, 01_MEF for MEF
+
 binning_factor=2
 listname="seg_image_list.csv"
 

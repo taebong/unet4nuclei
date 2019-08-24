@@ -106,7 +106,7 @@ else:
 # In[10]:
 
 
-print(img.dtype, img.shape)
+#print(img.dtype, img.shape)
 filename = os.listdir(config_vars["normalized_images_dir"])
 #img = skimage.io.imread(config_vars["normalized_images_dir"] + filename[-1])
 #plt.figure(figsize=(10,10))

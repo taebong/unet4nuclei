@@ -48,7 +48,8 @@ from config import config_vars
 # In[7]:
 
 
-experiment_name = '03'   #03: more training data (75% of all), do augmentation
+#experiment_name = '03'   #03: more training data (75% of all), do augmentation
+experiment_name = '01_MEF'     # training data 75%, val 25%, augmentation
 
 config_vars = utils.dirtools.setup_experiment(config_vars, experiment_name)
 

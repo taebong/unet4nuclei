@@ -12,6 +12,7 @@ config_vars = {}
 
 #config_vars["root_directory"] = '/Users/tyyoo/MitchisonLab/Data/image-segmentation/BBBC022/unet/'
 config_vars["root_directory"] = '/home/ty118/data/image-segmentation/BBBC022/unet'
+#config_vars["root_directory"] = '/home/ty118/data/image-segmentation/MEF_nuclei_annotations/unet/'
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # 01.02 DATA PARTITION INFO
@@ -21,11 +22,11 @@ config_vars["max_training_images"] = 0
 
 ## Generate partitions?
 ## If False, load predefined partitions (training.txt, validation.txt and test.txt)
-config_vars["create_split_files"] = False
+config_vars["create_split_files"] = True
 
 ## Randomly choose training and validation images.
 ## The remaining fraction is reserved for test images.
-config_vars["training_fraction"] = 0.75
+config_vars["training_fraction"] = 0.5
 config_vars["validation_fraction"] = 0.25
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -92,7 +93,7 @@ config_vars["crop_size"] = 256
 # ******** PREDICTION ******** #
 # **************************** #
 
-config_vars["cell_min_size"] = 16
+config_vars["cell_min_size"] = 15
 
 config_vars["boundary_boost_factor"] = 1
 
