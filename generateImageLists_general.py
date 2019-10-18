@@ -20,8 +20,8 @@ else:
         pattern = '.*.tif'
         regexp = re.compile(pattern,re.IGNORECASE) #inclde all tif files
 
-print(sys.argv[3])
-print(pattern)
+#print(sys.argv[3])
+#print(pattern)
 os.makedirs(savedir,exist_ok=True)
 
 allfnames = os.listdir(pth)
