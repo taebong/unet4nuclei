@@ -1,3 +1,5 @@
+from utils_LEXY import *
+
 import sys
 import numpy as np
 import scipy as sp
@@ -5,17 +7,12 @@ from scipy.optimize import curve_fit
 
 import pandas as pd
 import skimage
-from skimage.external import tifffile
-from skimage import segmentation
 from skimage import io
 from skimage import measure
 import mahotas as mh
 
 import matplotlib as mpl
 from matplotlib import pyplot as plt
-from matplotlib import colors as c
-
-import datetime
 
 import trackpy as tp
 
@@ -31,7 +28,7 @@ else:
     raw_image_dir = sys.argv[1]    #raw image pth
     analysis_dir = sys.argv[2]   #analysis pth
 
-code_ver = 'v3'
+code_ver = 'v4'
 refinement_setting = {'N':3, 'repeat': 1}   #segmentation refinement setting. 
 #N=3, repeat=1 for rupture assay, and N=10, repeat=2 for import/export assay 
 tracking_setting = {'link_distance':25,'memory':1,'adaptive_step':0.99,'adaptive_stop':5}     #nucleus tracking setting
@@ -42,9 +39,10 @@ AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','Rupture']
 reg_Pos = '(?<=_s)(?P<Pos>\d*)'
 reg_T = '(?<=_t)(?P<T>\d*)(?=.)'
 reg_Ch = '(?<=_w\d)(tae |Fluo )?(?P<Ch>(\d{3}|.*?))(?=_)'
-drop_Chs = ['447','Cyan']
-nucl_Chs = ['642','Far-Red']
-lexy_Chs = ['561','Red']
+drop_Chs = ['Cyan']
+#nucl_Chs = ['642','Far-Red']
+#lexy_Chs = ['561','Red']
+Ch_map = {'642':'nucl','Far-Red':'nucl','561':'LEXY','Red':'LEXY','447':'447'}  # Ch:ChannelName dictionary. Channel names should include 'nucl' at least  
 #binning_factor = 2
 
 #Load data list
@@ -91,8 +89,6 @@ df_meta = df_meta.sort_values(['Pos','Cycle','AcqState','T','Ch']).reset_index(d
 df_meta.head()
 
 
-
-
 #Load segmentation list
 fpths = glob.glob(analysis_dir+'segm/'+basename+'*.png')
 
@@ -134,25 +130,6 @@ df_seg = df_seg.loc[[ch not in drop_Chs for ch in df_seg['Ch']]].copy()
 df_seg = df_seg.sort_values(['Pos','Cycle','AcqState','T','Ch']).reset_index(drop=True)
 
 df_seg.head()
-
-
-def downsample(im,binning_factor):
-    sz = np.array(im.shape)
-    
-    # if sz[0] and sz[1] are not multiples of BINNING_FACTOR, reduce them to the largest multiple of BINNING_FACTOR and crop image
-    newsz = (sz/binning_factor).astype(int)
-    cropsz = newsz*binning_factor
-    im = im[0:cropsz[0],0:cropsz[1]]
-
-    newim = im.reshape((newsz[0],binning_factor,newsz[1],binning_factor))
-    return newim.mean(-1).mean(1)
-
-def get_time(fpth):
-    tf = tifffile.TiffFile(fpth)
-    datestr = re.search('(?<=datetime \(\d{2}s\) b\').*(?=\.\d*\')',tf.info()).group(0)
-    return datetime.datetime.strptime(datestr,'%Y%m%d %H:%M:%S').timestamp()
-
-
 
 
 # refine segmentation: take intersection of N consecutive images, and watershed. Do this forward and backward and repeat
@@ -218,10 +195,12 @@ else:
     with open(analysis_dir+'segm_refined/refinement_setting.json','w') as fp:
         json.dump(m,fp)
 
+        
 
 print("extracting features from raw images and segmentation results....")
 df_data = pd.DataFrame()
 lexy_bg = 1e5 #background level
+Ch_map_filtered = {ch:Ch_map[ch] for ch in Ch_map if ch in np.unique(df_meta['Ch'].values)}
 
 current_pos = -99
 for i,row in df_seg.iterrows():
@@ -231,74 +210,75 @@ for i,row in df_seg.iterrows():
     
     label=io.imread(analysis_dir+'segm_refined/'+row['Filename'])
     
-    lexy_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
-                                     & (df_meta['Pos']==row['Pos'])
-                                     & (df_meta['AcqState']==row['AcqState']) 
-                                   & np.array([ch in lexy_Chs for ch in df_meta['Ch']]) 
-                                   & (df_meta['T']==row['T']))[0][0],'Filename']
-    lexy = io.imread(raw_image_dir+lexy_fname)
-    
-    if 'binning_factor' not in locals():
-        binning_factor = int(lexy.shape[0]/label.shape[0])
-
-    lexy = downsample(lexy,binning_factor)
-    
-    if (lexy.min()<lexy_bg):
-        lexy_bg = lexy.min()
-    
-    nucl_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle']) 
-                                     & (df_meta['Pos']==row['Pos'])
-                                     & (df_meta['AcqState']==row['AcqState']) 
-                                   & np.array([ch in nucl_Chs for ch in df_meta['Ch']]) 
-                                   & (df_meta['T']==row['T']))[0][0],'Filename']
-    nucl = io.imread(raw_image_dir+nucl_fname)
-    
-    nucl = downsample(nucl,binning_factor)
-    
-    props_lexy = measure.regionprops(label,intensity_image=lexy,coordinates='rc')
-    props_nucl = measure.regionprops(label,intensity_image=nucl,coordinates='rc')
-    
-    macro_T = get_time(raw_image_dir+lexy_fname)
+    props_dict = {}
+    macro_T_dict = {}
+    for select_ch in Ch_map_filtered:
+        ch_name = Ch_map_filtered[select_ch]
+        
+        ind = (df_meta['Cycle']==row['Cycle']) & (df_meta['Pos']==row['Pos']) & (df_meta['AcqState']==row['AcqState']) & (df_meta['Ch']==select_ch) & (df_meta['T']==row['T'])
+        
+        if ind.sum()==0:
+            continue
+        else:
+            fname = df_meta.at[np.where(ind)[0][0],'Filename']
+        
+        img = io.imread(os.path.join(raw_image_dir,fname))
+        
+        if 'binning_factor' not in locals():
+            binning_factor = int(img.shape[0]/label.shape[0])
+        
+        img = downsample(img,binning_factor)
+        
+        if (ch_name == 'LEXY') & (img.min() <lexy_bg):
+            lexy_bg = img.min()
+            
+        props_dict[ch_name] = measure.regionprops(label,intensity_image=img,coordinates='rc')
+        
+        macro_T_dict[ch_name] = get_time(os.path.join(raw_image_dir,fname))
     
     newlist = []
-    for j in range(len(props_lexy)):
-        p_lexy = props_lexy[j]
-        p_nucl = props_nucl[j]
-        
-        cent = p_lexy.centroid
-        orientation = p_lexy.orientation
-        area = p_lexy.area
-        eccen = p_lexy.eccentricity
-        perimeter = p_lexy.perimeter
-        meanint_LEXY = p_lexy.mean_intensity
-        meanint_nucl = p_nucl.mean_intensity        
-        maxint_LEXY = p_lexy.max_intensity        
-        minint_LEXY = p_lexy.min_intensity  
+
+    if 'nucl' not in props_dict:
+        print('nucl channel not exist for AcqState %s, Cycle %d, Pos %d, T %d' %(row['AcqState'],row['Cycle'],row['Pos'],row['T']))
+        continue
     
-        intim_LEXY = p_lexy.intensity_image
-        intim_nucl = p_nucl.intensity_image
+    for j,p_nucl in enumerate(props_dict['nucl']):
+        #nucleus dimensions
+        cent = p_nucl.centroid
+        orientation = p_nucl.orientation
+        area = p_nucl.area
+        eccen = p_nucl.eccentricity
+        perimeter = p_nucl.perimeter
         
-        stdint_LEXY = np.std(intim_LEXY[intim_LEXY>0])
-        stdint_nucl = np.std(intim_nucl[intim_nucl>0])
+        macro_T = macro_T_dict['nucl']
+
+        newdict = {'AcqState':row['AcqState'],'Cycle':row['Cycle'],
+                   'Pos':row['Pos'],'pretrack_ID':p_nucl.label,
+                   'cent_x':cent[1],'cent_y':cent[0],
+                   'orientation':orientation,'area':area,
+                   'perimeter':perimeter,'eccen':eccen,
+                   'T':row['T'],'macro_T':macro_T,'frame':fr}
         
-        newlist.append({'AcqState':row['AcqState'],'Cycle':row['Cycle'],
-                        'Pos':row['Pos'],
-                        'pretrack_ID':p_nucl.label,
-                         'cent_x':cent[1],'cent_y':cent[0],
-                        'orientation':orientation,'area':area,
-                        'perimeter':perimeter,
-                        'eccen':eccen,'meanint_LEXY':meanint_LEXY,
-                        'meanint_nucl':meanint_nucl,'maxint_LEXY':maxint_LEXY,
-                        'minint_LEXY':minint_LEXY,
-                        'stdint_LEXY':stdint_LEXY,'stdint_nucl':stdint_nucl,
-                        'T':row['T'],'macro_T':macro_T,'frame':fr})
+        # add channel-specific properties to newdict
+        for ch_name in props_dict:
+            props = props_dict[ch_name]
+            p = props[j]
+            
+            intim = p.intensity_image
+            
+            newdict['meanint_'+ch_name] = p.mean_intensity
+            newdict['maxint_'+ch_name] = p.max_intensity
+            newdict['minint_'+ch_name] = p.min_intensity
+            newdict['stdint_'+ch_name] = np.std(intim[intim>0])
+        
+        newlist.append(newdict)
         
     df_data = pd.concat((df_data,pd.DataFrame(newlist)))
     
     fr += 1
     
-    del nucl, lexy, label
-    
+    del img, label
+
 df_data = df_data.reset_index(drop=True)
 
 print("Done!\n")
@@ -349,7 +329,9 @@ with open(analysis_dir+'tracking_setting.json','w') as fp:
 print("normalizing....")
 
 grp = df_data.loc[df_data['AcqState']=='PreLit'].groupby(['Pos','Cycle','ID'])
-prelit_avg = grp[['meanint_LEXY','eccen','meanint_nucl','area','perimeter']].mean().reset_index().set_index(['Pos','Cycle','ID'])
+var_list = ['eccen','area','perimeter']
+var_list.append(['meanint_'+ch_name for ch_name in Ch_map_filtered.values()])
+prelit_avg = grp[var_list].mean().reset_index().set_index(['Pos','Cycle','ID'])
 
 for ind,row in prelit_avg.iterrows():
     mask = (df_data['Pos']==ind[0]) & (df_data['Cycle']==ind[1]) & (df_data['ID']==ind[2])
@@ -368,149 +350,74 @@ for ind,row in grp_T.iterrows():
 print("Done!\n")
 
 
-def getLabelColorMap():
-    colors = plt.cm.jet(range(256))
-    np.random.shuffle(colors)
-    colors[0] = (0.,0.,0.,1.)
-    #rmap = c.ListedColormap(colors)
-    return colors
-
-def normalize_image(im,low=None,high=None):
-    if low==None:
-        low = np.min(im)
-    if high==None:
-        high = np.max(im)
-    
-    im = np.minimum(high,im)
-    im = np.maximum(low,im)
-    
-    im = (im-low)/(high-low)
-    
-    return im    
-
-def showSegmentation(label_im,norm_im1,norm_im2,rmap,df_track,zoom=3,fig=None,t=None,state=None):
-    
-    sz = label_im.shape
-    
-    combined = np.moveaxis([norm_im1,norm_im2,np.zeros(sz)],0,2)
-    
-    if fig:
-        axs = fig.subplots(2, 2,sharex=True, sharey=True);
-    else:
-        fig,axs = plt.subplots(2, 2,sharex=True, sharey=True);
-    
-    w,h = plt.figaspect(sz[0]/sz[1]);
-    fig.set_size_inches(w * zoom, h * zoom);
-    
-    axs[0][0].imshow(rmap[label_im%256]);    
-    axs[0][1].imshow(segmentation.mark_boundaries(norm_im1,label_im,mode='inner',color=None,outline_color=[1,0,0]));
-    axs[1][0].imshow(segmentation.mark_boundaries(norm_im2,label_im,mode='inner',color=None,outline_color=[1,0,0]));
-    axs[1][1].imshow(segmentation.mark_boundaries(combined,label_im,mode='inner',color=None,outline_color=[1,1,1]));
-    
-    labels = np.unique(label_im)
-    
-    #X,Y = np.meshgrid(np.arange(sz[1]),np.arange(sz[0]))
-    
-    for l in labels[labels!=0]:
-        #mask = (label_im == l)
-        #xc = np.sum(X*mask)/np.sum(mask)
-        #yc = np.sum(Y*mask)/np.sum(mask)
-        
-        xc,yc=df_track.loc[df_track['ID']==l,['cent_x','cent_y']].values[0]
-        
-        for ax in axs.flatten()[:3]:
-            ax.text(xc,yc,l,fontsize=3*zoom,
-                     horizontalalignment='center',
-                     verticalalignment='center',color='k');
-            
-    for ax in axs.flatten():
-        ax.set_yticks([]);
-        ax.set_xticks([]);
-    
-    if t!=None: #add timepoint
-        axs[0][0].text(sz[1]-10,10,'%d sec' %t,color='w',fontsize=7*zoom,horizontalalignment='right',
-                       verticalalignment='top', bbox=dict(facecolor='black', alpha=0.5));
-    
-    if state: #add acquisition state
-        axs[0][0].text(sz[1]-10,sz[0]-10,'%s' %state,color='w',fontsize=7*zoom,horizontalalignment='right',
-                       verticalalignment='bottom', bbox=dict(facecolor='black', alpha=0.5));
-    
-    
-    # Remove horizontal space between axes
-    fig.subplots_adjust(hspace=0.02,wspace=0.02);
-    
-    fig.tight_layout()
-
-    return fig,axs
-
-
-
 # Save df_data and movies
 
 print("Saving tracking data.....")
 df_data.to_csv(analysis_dir+'nuclei_tracking_results.csv',index=False)
 
-savedir = analysis_dir+'nuclei_tracking_image/'
-os.makedirs(savedir,exist_ok=True)
+# savedir = analysis_dir+'nuclei_tracking_image/'
+# os.makedirs(savedir,exist_ok=True)
 
-rmap = getLabelColorMap()
+# rmap = getLabelColorMap()
 
-fig = plt.figure();
-for i,row in df_seg.iterrows():
-    df_fr = df_data.loc[(df_data['Cycle']==row['Cycle']) 
-                        & (df_data['Pos']==row['Pos'])
-                        & (df_data['AcqState']==row['AcqState'])
-                       & (df_data['T']==row['T'])].copy()
+# fig = plt.figure();
+# for i,row in df_seg.iterrows():
+#     df_fr = df_data.loc[(df_data['Cycle']==row['Cycle']) 
+#                         & (df_data['Pos']==row['Pos'])
+#                         & (df_data['AcqState']==row['AcqState'])
+#                        & (df_data['T']==row['T'])].copy()
     
-    label=io.imread(analysis_dir+'segm_refined/'+row['Filename'])
+#     label=io.imread(analysis_dir+'segm_refined/'+row['Filename'])
     
-    lexy_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
-                                     & (df_meta['Pos']==row['Pos'])
-                                     & (df_meta['AcqState']==row['AcqState']) 
-                                   & np.array([ch in lexy_Chs for ch in df_meta['Ch']]) 
-                                   & (df_meta['T']==row['T']))[0][0],'Filename']
-    lexy = io.imread(raw_image_dir+lexy_fname)
-    lexy = downsample(lexy,binning_factor)
+#     lexy_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
+#                                      & (df_meta['Pos']==row['Pos'])
+#                                      & (df_meta['AcqState']==row['AcqState']) 
+#                                    & np.array([ch in lexy_Chs for ch in df_meta['Ch']]) 
+#                                    & (df_meta['T']==row['T']))[0][0],'Filename']
+#     lexy = io.imread(raw_image_dir+lexy_fname)
+#     lexy = downsample(lexy,binning_factor)
     
-    nucl_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
-                                     & (df_meta['Pos']==row['Pos'])
-                                     & (df_meta['AcqState']==row['AcqState']) 
-                                   & np.array([ch in nucl_Chs for ch in df_meta['Ch']]) 
-                                   & (df_meta['T']==row['T']))[0][0],'Filename']
-    nucl = io.imread(raw_image_dir+nucl_fname)
-    nucl = downsample(nucl,binning_factor)
+#     nucl_fname = df_meta.at[np.where((df_meta['Cycle']==row['Cycle'])
+#                                      & (df_meta['Pos']==row['Pos'])
+#                                      & (df_meta['AcqState']==row['AcqState']) 
+#                                    & np.array([ch in nucl_Chs for ch in df_meta['Ch']]) 
+#                                    & (df_meta['T']==row['T']))[0][0],'Filename']
+#     nucl = io.imread(raw_image_dir+nucl_fname)
+#     nucl = downsample(nucl,binning_factor)
     
-    percentile = 99.9
-    if i == 0:  #normalization factors for images  
-        lexy_high = np.percentile(lexy,percentile)
-        lexy_low = np.percentile(lexy,100-percentile)
-        nucl_high = np.percentile(nucl,percentile)
-        nucl_low = np.percentile(nucl,100-percentile)
+#     percentile = 99.9
+#     if i == 0:  #normalization factors for images  
+#         lexy_high = np.percentile(lexy,percentile)
+#         lexy_low = np.percentile(lexy,100-percentile)
+#         nucl_high = np.percentile(nucl,percentile)
+#         nucl_low = np.percentile(nucl,100-percentile)
     
-    lexy = normalize_image(lexy,low=lexy_low,high=lexy_high)
-    nucl = normalize_image(nucl,low=nucl_low,high=nucl_high)
+#     lexy = normalize_image(lexy,low=lexy_low,high=lexy_high)
+#     nucl = normalize_image(nucl,low=nucl_low,high=nucl_high)
     
-    # change from pretrack label to posttrack label
-    id_map = df_fr[['pretrack_ID','ID']].drop_duplicates().set_index('pretrack_ID')
-    new_label = label.copy() #post track label
+#     # change from pretrack label to posttrack label
+#     id_map = df_fr[['pretrack_ID','ID']].drop_duplicates().set_index('pretrack_ID')
+#     new_label = label.copy() #post track label
 
-    for preID in np.unique(label[label>0]):
-        new_label = np.where(label==preID,id_map.at[preID,'ID'],new_label)
+#     for preID in np.unique(label[label>0]):
+#         new_label = np.where(label==preID,id_map.at[preID,'ID'],new_label)
 
-    fig,axs = showSegmentation(new_label,lexy,nucl,
-                               rmap,df_fr,fig=fig,
-                               t=df_fr['micro_T'].values[0],
-                              state=row['AcqState']);
+#     fig,axs = showSegmentation(new_label,lexy,nucl,
+#                                rmap,df_fr,fig=fig,
+#                                t=df_fr['micro_T'].values[0],
+#                               state=row['AcqState']);
     
-    fig.savefig(savedir+'frame%06d_Pos%02d_Cycle%03d_%s_%03d.jpg' %(i,int(row['Pos']),int(row['Cycle']),row['AcqState'],int(row['T'])),
-               frameon=False,facecolor=None,edgecolor=None,quality=80);
+#     fig.savefig(savedir+'frame%06d_Pos%02d_Cycle%03d_%s_%03d.jpg' %(i,int(row['Pos']),int(row['Cycle']),row['AcqState'],int(row['T'])),
+#                frameon=False,facecolor=None,edgecolor=None,quality=80);
 
-    plt.clf()
+#     plt.clf()
     
-    del df_fr
-    del lexy, nucl, label
+#     del df_fr
+#     del lexy, nucl, label
     
-    gc.collect()
+#     gc.collect()
     
 
 print("Done!\n")
+
+

@@ -127,7 +127,9 @@ df_res = fit_model(df_data,model=model,p0=p0,bounds=bounds,log_file=log_file)
 
 # merge with prelit average
 grp = df_data.groupby(['Pos','Cycle','ID'])
-prelit_avg = grp[['meanint_LEXY','eccen','meanint_nucl','area','perimeter']].mean().reset_index().set_index(['Pos','Cycle','ID'])
+var_list = ['eccen','area','perimeter']
+var_list.append([v for v in df_data.columns if 'meanint_' in v])
+prelit_avg = grp[var_list].mean().reset_index().set_index(['Pos','Cycle','ID'])
 df_res = df_res.join(prelit_avg)
 df_res.head()
 
