@@ -330,7 +330,7 @@ print("normalizing....")
 
 grp = df_data.loc[df_data['AcqState']=='PreLit'].groupby(['Pos','Cycle','ID'])
 var_list = ['eccen','area','perimeter']
-var_list.append(['meanint_'+ch_name for ch_name in Ch_map_filtered.values()])
+var_list = var_list + ['meanint_'+ch_name for ch_name in Ch_map_filtered.values()]
 prelit_avg = grp[var_list].mean().reset_index().set_index(['Pos','Cycle','ID'])
 
 for ind,row in prelit_avg.iterrows():

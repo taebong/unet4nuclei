@@ -8,6 +8,7 @@ import os
 import gc
 
 import matplotlib as mpl
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 from matplotlib import colors as c
 
@@ -126,12 +127,18 @@ log_file.write("Fitting model: "+model.__name__+"\n")
 df_res = fit_model(df_data,model=model,p0=p0,bounds=bounds,log_file=log_file)
 
 # merge with prelit average
-grp = df_data.groupby(['Pos','Cycle','ID'])
-var_list = ['eccen','area','perimeter']
-var_list.append([v for v in df_data.columns if 'meanint_' in v])
+df_prelit = df_data.loc[df_data['AcqState']=='PreLit']
+grp = df_prelit.groupby(['Pos','Cycle','ID'])
+var_list = ['eccen','area','perimeter','meanint_nucl','meanint_LEXY']
 prelit_avg = grp[var_list].mean().reset_index().set_index(['Pos','Cycle','ID'])
 df_res = df_res.join(prelit_avg)
-df_res.head()
+#df_res.head()
+
+# merge with other channel average (e.g. 447 avearage)
+var_list = [v for v in df_data.columns if ('meanint_' in v) & ('nucl' not in v) & ('LEXY' not in v)]
+grp = df_data.groupby(['Pos','Cycle','ID'])
+avg = grp[var_list].mean().reset_index().set_index(['Pos','Cycle','ID'])
+df_res = df_res.join(avg)
 
 # save results
 df_res.to_csv(analysis_dir+'model_fit_results.csv')
