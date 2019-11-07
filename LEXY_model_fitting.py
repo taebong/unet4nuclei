@@ -22,6 +22,8 @@ df_data = pd.read_csv(analysis_dir+'nuclei_tracking_results.csv')
 #df_data.head(20)
 
 transition_times = df_data.groupby('AcqState')['micro_T'].min().reset_index().set_index('AcqState')
+if 'PostLit' not in transition_times.index:    #if PostLit images were not analyzed
+    transition_times = transition_times.append(pd.DataFrame([(np.inf)],columns=['micro_T'],index=['PostLit']))
 
 def LEXY_model(t,kout,kin,b,c,transition_times=transition_times):
     a = 1
@@ -31,8 +33,9 @@ def LEXY_model(t,kout,kin,b,c,transition_times=transition_times):
     y = y + ((t>=t1) & (t<t2))*((a-b)*np.exp(-(t-t1)*kout)+b)   #Lit
     
     bottom = a*np.exp(-(t2-t1)*kout)+b
-    
-    y = y + (t>=t2)*((c-bottom)*(1-np.exp(-(t-t2)*kin))+bottom)     #PostLit
+   
+    if ~np.isinf(t2): 
+        y = y + (t>=t2)*((c-bottom)*(1-np.exp(-(t-t2)*kin))+bottom)     #PostLit
                      
     return y
 
@@ -46,8 +49,9 @@ def LINuS_model(t,kout,kin,b,c,transition_times=transition_times):
     
     top = (b-a)*(1-np.exp(-(t2-t1)*kin))+a
     
-    y = y + (t>=t2)*(c+(top-c)*np.exp(-(t-t2)*kout))     #PostLit
-                     
+    if ~np.isinf(t2):
+        y = y + (t>=t2)*(c+(top-c)*np.exp(-(t-t2)*kout))     #PostLit
+   
     return y
 
 
@@ -78,7 +82,8 @@ def fit_model(df,model=None,
         x = df_select['micro_T']
         y = df_select['meanint_LEXY_normed']
         dy = df_select['stdint_LEXY_normed']/np.sqrt(df_select['area'])  #sem
-        
+       
+        #popt,pcov = curve_fit(model,x,y,p0=p0,sigma=dy,bounds=bounds) 
         try:
             popt,pcov = curve_fit(model,x,y,p0=p0,sigma=dy,bounds=bounds)
             
@@ -139,7 +144,6 @@ var_list = [v for v in df_data.columns if ('meanint_' in v) & ('nucl' not in v) 
 grp = df_data.groupby(['Pos','Cycle','ID'])
 avg = grp[var_list].mean().reset_index().set_index(['Pos','Cycle','ID'])
 df_res = df_res.join(avg)
-
 # save results
 df_res.to_csv(analysis_dir+'model_fit_results.csv')
 
@@ -189,7 +193,9 @@ for ind,df in grp:
         if (count==curves_per_fig):
             plt.legend(title='Nucleus ID',ncol=2)
             plt.axvline(x=t1,linestyle='--',color='gray',alpha=0.6)
-            plt.axvline(x=t2,linestyle='--',color='gray',alpha=0.6)
+            
+            if ~np.isinf(t2):
+                plt.axvline(x=t2,linestyle='--',color='gray',alpha=0.6)
             
             plt.xlabel('Time (sec)')
             plt.ylabel('Norm. Intensity (A.U.)')
