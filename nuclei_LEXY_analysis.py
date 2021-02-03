@@ -209,6 +209,8 @@ for i,row in df_seg.iterrows():
         current_pos = row['Pos']
     
     label=io.imread(analysis_dir+'segm_refined/'+row['Filename'])
+
+    print(row['Filename'])
     
     props_dict = {}
     macro_T_dict = {}
