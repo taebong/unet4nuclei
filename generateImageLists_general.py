@@ -18,7 +18,7 @@ else:
         regexp = re.compile(pattern)
     else:
         #pattern = '.*.tif'
-        pattern = '(PreLit|Lit|PostLitGFP|PostLit)\d*_w.*(642|491|447)\s{0,1}_.*.TIF'
+        pattern = '(PreLit|Lit|PostLitGFP|PostLit|PostLitLSSmKate)\d*_w.*(642|491|447)\s{0,1}_.*.TIF'
         regexp = re.compile(pattern,re.IGNORECASE) #inclde all tif files
 
 #print(sys.argv[3])

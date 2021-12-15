@@ -18,13 +18,13 @@ else:
 os.makedirs(savedir,exist_ok=True)
 
 basename = ''
-AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','Rupture']
+AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','PostLitGFP','Rupture','PostLitLSSmKate']
 reg_T = '(?<=_t)(?P<T>\d*)(?=.TIF)'
-reg_Ch = '(?<=_w\d)(tae |Fluo )?(?P<Ch>(\d{3}|.*?))(?=_)'
+reg_Ch = '(?<=_w\d)(tae |Fluo )?(?P<Ch>\S+?)\s?(?=_)'
 drop_Chs = ['447','Cyan']
 
 keep_Chs = ['642','Far-Red']
-keep_AcqStates = ['PreLit','Lit','PostLit','Rupture']
+keep_AcqStates = ['PreLit','Lit','PostLit','PostLitGFP','Rupture','PostLitLSSmKate']
 os.makedirs(savedir,exist_ok=True)
 
 

@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -c 1
 #SBATCH -N 1
-#SBATCH -t 1-12:00:00
-#SBATCH -p gpu_quad
+#SBATCH -t 3:00:00
+#SBATCH -p gpu
 #SBATCH --gres=gpu:1
 #SBATCH --mem=4000
 #SBATCH -o log/batch_workflow_%j.out
@@ -17,4 +17,4 @@ module load python/3.6.0
 
 source nucleiseg_env/bin/activate
 
-source batch_workflow.sh
+source batch_workflow_wGFP.sh

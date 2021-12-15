@@ -28,21 +28,21 @@ else:
     raw_image_dir = sys.argv[1]    #raw image pth
     analysis_dir = sys.argv[2]   #analysis pth
 
-code_ver = 'v4'
+code_ver = 'v5'
 refinement_setting = {'N':3, 'repeat': 1}   #segmentation refinement setting. 
 #N=3, repeat=1 for rupture assay, and N=10, repeat=2 for import/export assay 
-tracking_setting = {'link_distance':25,'memory':1,'adaptive_step':0.99,'adaptive_stop':5}     #nucleus tracking setting
+tracking_setting = {'link_distance':40,'memory':1,'adaptive_step':0.99,'adaptive_stop':5}     #nucleus tracking setting
     
 basename = ''
-AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','Rupture']
+AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','PostLitGFP','Rupture','PostLitLSSmKate']
 #reg_cycle = '(?<=[PreLitZScan|PreLit|Lit|PostLit|Rupture])(?P<Cycle>\d*)(?=_w)'
 reg_Pos = '(?<=_s)(?P<Pos>\d*)'
 reg_T = '(?<=_t)(?P<T>\d*)(?=.)'
-reg_Ch = '(?<=_w\d)(tae |Fluo )?(?P<Ch>(\d{3}|.*?))(?=_)'
+reg_Ch = '(?<=_w\d)(tae |Fluo )?(?P<Ch>\S+?)\s?(?=_)'
 drop_Chs = ['Cyan']
 #nucl_Chs = ['642','Far-Red']
 #lexy_Chs = ['561','Red']
-Ch_map = {'642':'nucl','Far-Red':'nucl','561':'LEXY','Red':'LEXY','447':'447'}  # Ch:ChannelName dictionary. Channel names should include 'nucl' at least  
+Ch_map = {'642':'nucl','Far-Red':'nucl','561':'LEXY','Red':'LEXY','447':'447','491':'491','LSSmKate':'LSSmKate'}  # Ch:ChannelName dictionary. Channel names should include 'nucl' at least  
 #binning_factor = 2
 
 #Load data list

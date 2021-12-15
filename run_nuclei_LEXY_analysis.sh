@@ -17,13 +17,13 @@ module load python/3.6.0
 source nucleiseg_env/bin/activate
 
 
-#for i in 1 2 3
-#do
+for i in 1 2 3 4 5 6 7 8
+do
 # SPECIFY THIS!
-input_dir="/n/groups/mitchison/Tae/SpinningDisk/20190811_MEF_transport_glyco_perturbation/Well8/"
-output_dir="/n/groups/mitchison/Tae/analysis/unet4nuclei_outputs/20190811_MEF_transport_glyco_perturbation/Well8/"
+input_dir="/n/groups/mitchison/Tae/SpinningDisk/20190521_ImportinBeta_mutants/Well$i/"
+output_dir="/n/groups/mitchison/Tae/analysis/unet4nuclei_outputs/20190521_ImportinBeta_mutants/Well$i/"
 
 python nuclei_LEXY_analysis.py $input_dir $output_dir
 python LEXY_model_fitting.py $output_dir
 
-#done
+done
