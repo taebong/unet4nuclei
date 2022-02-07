@@ -1,6 +1,7 @@
 import numpy as np
 
-from skimage.external import tifffile
+#from skimage.external import tifffile
+import tifffile
 from skimage import segmentation
 
 import re
@@ -24,8 +25,13 @@ def downsample(im,binning_factor):
 
 def get_time(fpth):
     tf = tifffile.TiffFile(fpth)
-    datestr = re.search('(?<=datetime \(\d{2}s\) b\').*(?=\.\d*\')',tf.info()).group(0)
-    return datetime.datetime.strptime(datestr,'%Y%m%d %H:%M:%S').timestamp()
+    try: 
+        datestr = re.search('(?<=datetime \(\d{2}s\) b\').*(?=\.\d*\')',tf.info()).group(0)
+        ts = datetime.datetime.strptime(datestr,'%Y%m%d %H:%M:%S').timestamp()
+    except:
+        datestr = tf.imagej_metadata['time']
+        ts = datetime.datetime.strptime(datestr,'%Y-%m-%dT%H:%M:%S').timestamp()
+    return ts
 
 
 

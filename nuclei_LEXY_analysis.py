@@ -38,11 +38,19 @@ AcqStates = ['PreLitZScan','PreLit','Lit','PostLit','PostLitGFP','Rupture','Post
 #reg_cycle = '(?<=[PreLitZScan|PreLit|Lit|PostLit|Rupture])(?P<Cycle>\d*)(?=_w)'
 reg_Pos = '(?<=_s)(?P<Pos>\d*)'
 reg_T = '(?<=_t)(?P<T>\d*)(?=.)'
-reg_Ch = '(?<=_w\d)(tae |Fluo )?(?P<Ch>\S+?)\s?(?=_)'
+reg_Ch = '(?<=_w\d)(tae |Fluo |Confocal )?(?P<Ch>[^\s^_]*)\s?\w+?(?=_)'
 drop_Chs = ['Cyan']
 #nucl_Chs = ['642','Far-Red']
 #lexy_Chs = ['561','Red']
-Ch_map = {'642':'nucl','Far-Red':'nucl','561':'LEXY','Red':'LEXY','447':'447','491':'491','LSSmKate':'LSSmKate'}  # Ch:ChannelName dictionary. Channel names should include 'nucl' at least  
+Ch_map = {'642':'nucl',
+          'Far-Red':'nucl',
+          '640':'nucl',
+          '561':'LEXY',
+          'Red':'LEXY',
+          '447':'447',
+          '491':'491',
+          '445':'445',
+          'LSSmKate':'LSSmKate'}  # Ch:ChannelName dictionary. Channel names should include 'nucl' at least  
 #binning_factor = 2
 
 #Load data list
